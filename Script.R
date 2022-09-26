@@ -108,6 +108,13 @@ Test.Weeks_3 <- kruskal.test(SalesInThousands ~ week, data = data.org %>% filter
 
 Locations.PromotionGroup <- data.org %>% group_by(Promotion) %>% summarize(Nr.Locations = n() / 4)
 
+# Regarding LocationID, do we have any outliers that could greatly increase Sales, even conditionally per week?
+
+Location.outlier.Promotion <- ggplot(data = data.org %>% arrange(Promotion)) + 
+  geom_point(aes(x = LocationID, y = SalesInThousands, color = MarketSize)) + facet_wrap(.~week) + theme_bw()
+
+# No utliers :)
+
 # Effect of Promotion on cumulative Sales taking number of locations into account 
 # --> Per Average location :)
 
@@ -279,5 +286,10 @@ shapiro.test(data.org %>% distinct(LocationID, .keep_all = TRUE) %>% filter(Prom
 Kruskal.AgeOfStore.Promotion <- kruskal.test(Promotion ~ AgeOfStore, data = data.org %>% distinct(LocationID, .keep_all = TRUE))
 # There are significant differences in Ages of stores between Promotion groups.
 
+## 2.5 MarketID ----
 
+# Regarding MarketID, do we have any outliers that could greatly increase Sales, even conditionally per MarketSize?
+MarketID.outliers <- ggplot(data = data.org %>% group_by(LocationID, MarketID, MarketSize, Promotion) %>% summarize(SalesInThousands = sum(SalesInThousands))) + 
+  geom_point(aes(x = Promotion, y = SalesInThousands, color = MarketSize)) +  facet_wrap(. ~ MarketID) + theme_bw() +
+  labs(x = "Promotion", y = "Sales in 4 weeks", title = "MarketID")
 

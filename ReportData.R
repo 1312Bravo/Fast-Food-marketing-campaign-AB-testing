@@ -68,6 +68,10 @@ Test.Weeks_3 # No relationship between week and Sales with Promotion 3
 
 # 4. LocationID ----
 
+# Regarding LocationID, do we have any outliers that could greatly increase Sales, even conditionally per week?
+Location.outlier.Promotion 
+# No outliers :)
+
 # We Might to take number of Locations into accounts (LocationID)
 Locations.PromotionGroup
 
@@ -154,7 +158,13 @@ Kruskal.AgeOfStore.Promotion
 # There are significant differences in Ages of stores between Promotion groups.
 
 
+# 5. MarketID
 
+# Regarding MarketID, do we have any outliers that could greatly increase Sales, even conditionally per MarketSize?
+MarketID.outliers
+# If we look at Sales by Promotion conditional on MarketID, we see that Sales are roughly equally distributed between Promotions at each MarketId 
+# and also follow the findings based on MarketSize.
+# There are therefore no outliers or MarketID influence that would affect Sales and not be detected in Promotion.
 
 
 
