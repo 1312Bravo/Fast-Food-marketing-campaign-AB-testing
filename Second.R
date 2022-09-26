@@ -142,7 +142,7 @@ ggplot(data = data.org, aes(x = SalesInThousands)) + geom_density(fill = "grey")
 shapiro.test(data.org %>% filter(MarketSize == "Large") %>% pull(SalesInThousands)) # No normality (for Large :))
 kruskal.test(SalesInThousands ~ MarketSize, data = data.org) # Sales differ statistically significantly according to Market Size
 pairwise.wilcox.test(data.org$SalesInThousands, data.org$MarketSize, p.adjust.method = "BH") # All three groups are different
-data.org %>% group_by(MarketSize) %>% summarize(Avg.Sales = mean(SalesInThousands)) %>% 
+data.org %>% group_by(MarketSize) %>% summarize(Avg.Sales = mean(SalesInThousands), FullSales = sum(SalesInThousands)) %>% 
   arrange(desc(Avg.Sales)) %>%
   mutate(Avg.Sales.Percentage = Avg.Sales / sum(Avg.Sales) * 100)
 # Large (70.1 or 40.9%) > Small (57.4 or 33.5%) > Medium (44.0 or 25.6%)
@@ -250,7 +250,6 @@ data.org %>% group_by(Promotion) %>% summarize(Avg.SalesNormalized = mean(SalesI
 ## 99.4 Others ----
 
 table(data.org$MarketID) # MarketID --> 10 different, not equally represented
-length(table(data.org$LocationID)) # LocationID --> 137 store locations, each of them once i.e. 4 weeks :) 
 
 ### 99.4.1 AgeOfStore ----
 unique(data.org$AgeOfStore) %>% sort() # AgeOfStore --> 1-28, mean = 8.5, median = 7
@@ -297,6 +296,22 @@ data.org %>% group_by(Promotion, week) %>% summarize(Avg.Normalized.Sales = mean
   geom_label(aes(label = round(Avg.Normalized.Sales, 1)), vjust = 1.5) +
   theme_bw() + theme(legend.position = "none")
 
+# Sales depending only on weeks
+xtabs(SalesInThousands ~ week, data = data.org)
+data.org %>% group_by(week) %>% summarize(cumSales = sum(SalesInThousands))
+kruskal.test(SalesInThousands ~ week, data = data.org)
+# No relationship between week and Sales
+
+### 99.4.3 LocationID ----
+
+length(table(data.org$LocationID)) 
+# LocationID --> 137 store locations, each of them once i.e. 4 weeks :)
+# Every Location is exactly once with one of 3 promotions.
+
+# Is MarketSize correlated with LocationID? --> Chisq but not totally ok, because < 5 in each :)
+xtabs(~ LocationID + MarketSize, data = data.org)
+chisq.test(xtabs(~ LocationID + MarketSize, data = data.org))
+
 ## 99.5 Hypothesis testing ----
 
 # Based on the tests, we can conclude:
@@ -314,8 +329,72 @@ data.org %>% group_by(Promotion, week) %>% summarize(Avg.Normalized.Sales = mean
 
 # AgeOfStore:
 # There is no relationship between AgeOfStore and Sales
-# There are no significant differences between Sales regarding AgeOfStore.
+# There are no significant differences between Promotion groups regarding AgeOfStore.
 
 # week:
 # There are no differences between Sales regarding weeks.
-# There are minimal differences in weeks between all Promotions groups
+# There are minimal (not significant) differences in weeks between all Promotions groups
+
+# ..........................................
+
+# Conclusions:
+# --> AgeOfStore is "equally" distributed between Promotion groups and thus has no indirect effect on Sales.
+# --> week is "equally" distributed between Promotion groups and thus has no indirect effect on Sales.
+# --> MarketSize and Promotion group are not significantly correlated variables.
+# --> There are no significant differences between Promotion groups regarding AgeOfStore.
+# ----> Since neither variable is significantly related to Promotion, we can assume that Promotion only "affects" Sales in our case.
+
+# ...........................................
+
+# We want to test whether there are statistically significant differences between Promotion groups regarding Sales 
+# and thus determine the best Promotion group ----> We already did that, but will do it again :)
+# (Let's assume that MarketSize doesn't affect either and we take the raw values of Sales according to MarketSize.)
+
+# We will use t-test (or Wilcoxon test for non-normality):)
+# Since we will be comparing three groups, we will do all paired t-tests (3) and p-values corrected for multiple testing.
+# Null Hypothesis (H0): Sales1 = Sales2 = Sales3 
+# Alternate Hypothesis (H1): exists i != j; Salesi != Salesj
+
+# Parametric or non parametric test ? --> Non parametric I think :) --> Kruskal Wallis test :)
+ggplot(data = data.org, aes(x = SalesInThousands)) + geom_density(fill = "grey") + facet_wrap(. ~ Promotion) + theme_bw()
+shapiro.test(data.org %>% filter(Promotion == "1") %>% pull(SalesInThousands)) # Promotion = 1 --> Non normality, other two are the same :)
+
+kruskal.test(SalesInThousands ~ Promotion, data = data.org)
+# There are significant differences between groups :)
+# But we don't know which pairs of groups are different.
+# --> pairwise.wilcox.test() to calculate pairwise comparisons between group levels with corrections for multiple testing.
+pairwise.wilcox.test(data.org$SalesInThousands, data.org$Promotion, p.adjust.method = "BH")
+# All three Promotion groups are different :) But which is the best and second best?
+data.org %>% group_by(Promotion) %>% summarize(Avg.Sales = mean(SalesInThousands)) %>% arrange(desc(Avg.Sales)) %>%
+  mutate(Avg.Sales.Perc = Avg.Sales / sum(Avg.Sales) * 100)
+# 1 (36.1%) > 3 (34.4%) > 2 (29.4%)
+
+# ...................................................
+
+# Do the same thing but with Normalized Sales Values for MarketSize
+
+ggplot(data = data.org, aes(x = SalesInThousands.Normalized.Avg)) + geom_density(fill = "grey") + facet_wrap(. ~ Promotion) + theme_bw()
+shapiro.test(data.org %>% filter(Promotion == "1") %>% pull(SalesInThousands.Normalized.Avg)) # Promotion = 1 --> Non normality
+shapiro.test(data.org %>% filter(Promotion == "2") %>% pull(SalesInThousands.Normalized.Avg)) # Promotion = 2 --> Non normality
+shapiro.test(data.org %>% filter(Promotion == "3") %>% pull(SalesInThousands.Normalized.Avg)) # Promotion = 3 --> Non normality
+
+
+kruskal.test(SalesInThousands.Normalized.Avg ~ Promotion, data = data.org)
+# There are significant differences between groups :)
+# But we don't know which pairs of groups are different.
+# --> pairwise.wilcox.test() to calculate pairwise comparisons between group levels with corrections for multiple testing.
+pairwise.wilcox.test(data.org$SalesInThousands.Normalized.Avg, data.org$Promotion, p.adjust.method = "BH")
+# Promotion 1 = Promotion 3 & Promotion 1 != Promotion 3 & Promotion 2 != Promotion 3
+data.org %>% group_by(Promotion) %>% summarize(Avg.SalesNormalized = mean(SalesInThousands.Normalized.Avg)) %>% 
+  arrange(desc(Avg.SalesNormalized)) %>%
+  mutate(Avg.SalesNormalized.Perc = Avg.SalesNormalized / sum(Avg.SalesNormalized) * 100)
+# 1 (35.8%) = 3 (35.0%) > 2 (29.2%)
+
+
+
+
+
+
+
+
+
