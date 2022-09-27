@@ -181,7 +181,7 @@ Sales.Promotion.Location.Nr <- data.Promotion.CumWeeks %>% group_by(Promotion) %
 
 # Average number of Sales in 4 weels conditional on MarketSize
 MarketSize.Sales <- data.org %>% group_by(LocationID, MarketSize) %>% summarize(Sales = sum(SalesInThousands)) %>%
-  group_by(MarketSize) %>% summarize(Avg.Sales = mean(Sales)) %>% arrange(desc(Avg.Sales))
+  group_by(MarketSize) %>% summarize(Number = n(), Avg.Sales = mean(Sales)) 
 
 table(data.org$Promotion, data.org$MarketSize)
 # --> Small-60, Medium-320, Large-168 
@@ -219,6 +219,10 @@ promotionXsize <- data.org %>%
   mutate(Promotion_1 = Promotion_1 / sum(Promotion_1) * 100,
          Promotion_2 = Promotion_2 / sum(Promotion_2) * 100,
          Promotion_3 = Promotion_3 / sum(Promotion_3) * 100)
+
+promotionXsizePlot <- promotionXsize %>% setNames(c("MarketSize", "Campaign 1", "Campaign 2", "Campaign 3")) %>% data.table::melt(id.vars = "MarketSize") %>% 
+  ggplot(aes(x = variable, y = value, fill = variable)) + geom_col() + facet_wrap(.~ MarketSize) + theme_bw() + theme(legend.position = "none") + 
+  labs(x = "", y = "Campaign %", fill = "")
 # For each Promotion group, medium market size is most common and small market size the least common
 
 # Test: Is there a correlation between MarketSize and Promotion?
@@ -263,6 +267,11 @@ MarketSize.Normalized <- data.Normalized.Size.Sales %>%
   labs(x = "Promotion", y = "Average normalized sales per location [%]", title = "Effect of Promotion on Sales normalized per MarketSize") +
   theme_bw() + theme(legend.position = "none", plot.title = element_text(hjust = 0.5))
 
+MarketSize.Normalized.Table <- data.Normalized.Size.Sales %>% 
+  group_by(Promotion) %>% summarize(Avg.Sales.Normalized = mean(Sales.Normalized.Avg)) %>%
+  mutate(Sales.Normalized.AvgPercent = Avg.Sales.Normalized / sum(Avg.Sales.Normalized) * 100)
+
+
 # Test: Is there a significant difference in average Sales between Promotions when normalized for MarketSize?
 
 ggplot(data = data.Normalized.Size.Sales, aes(x = Sales.Normalized.Avg)) + geom_density(fill = "grey") + facet_wrap(. ~ Promotion) + theme_bw()
@@ -279,14 +288,27 @@ pairwise.wilcox.test(data.Normalized.Size.Sales$Sales.Normalized.Avg, data.Norma
 ## 2.4 AgeofStore ----
 
 # Is there a relationship between AgeOfStore and Sales?
-AgeOfStoreBasic <- ggplot(data = data.org, aes(x = AgeOfStore, y = SalesInThousands)) + geom_point() + geom_smooth(method = "loess") + theme_bw()
+AgeOfStoreBasic <- ggplot(data = data.org %>% group_by(LocationID, Promotion, AgeOfStore) %>% summarize(Sales = sum(SalesInThousands)) %>% mutate(Promotion = paste("Campaign", Promotion)), 
+                          aes(x = AgeOfStore, y = Sales, color = Promotion)) + geom_point() + geom_smooth(method = "loess", alpha = .3) + 
+  theme_bw() + theme(legend.position = "top") + labs(x = "Age of Store", y = "Sales", color = "")
+
 AgeOfStoreLinear <- lm(SalesInThousands ~ AgeOfStore, data = data.org) %>% summary()
+
+# Test:
+ggplot(data = data.org %>% distinct(LocationID, .keep_all = TRUE) %>% mutate(Promotion = paste("Campaign", Promotion))) + geom_density(aes(x = AgeOfStore)) # Non parametric :)
+ggplot(data = data.org %>% distinct(LocationID, .keep_all = TRUE) %>% mutate(Promotion = paste("Campaign", Promotion))) + geom_density(aes(x = SalesInThousands)) # Non parametric
+
+cortest.data <- data.org %>% group_by(LocationID, Promotion, AgeOfStore) %>% summarize(Sales = sum(SalesInThousands)) %>% mutate(Promotion = paste("Campaign", Promotion))
+
+cor.test(x = cortest.data$AgeOfStore, cortest.data$Sales, method = "spearman", exact = FALSE)
+
 # No (linear) relationship
 
 # Is there a relationship between AgeOfStore and Promotion group?
-AgeOfStorePromotion <- ggplot(data = data.org %>% distinct(LocationID, .keep_all = TRUE)) + 
-  geom_boxplot(aes(x = Promotion, y = AgeOfStore, color = Promotion)) +
-  theme_bw() + theme(legend.position = "none", plot.title = element_text(hjust = 0.5))
+AgeOfStorePromotion <- ggplot(data = data.org %>% distinct(LocationID, .keep_all = TRUE) %>% mutate(Promotion = paste("Campaign", Promotion))) + 
+  geom_boxplot(aes(x = Promotion, y = AgeOfStore, fill = Promotion)) +
+  theme_bw() + theme(legend.position = "none", plot.title = element_text(hjust = 0.5)) +
+  labs(x = "", y = "Age of store")
 # No visible relationship
 
 # Test :
@@ -301,9 +323,28 @@ Kruskal.AgeOfStore.Promotion <- kruskal.test(Promotion ~ AgeOfStore, data = data
 ## 2.5 MarketID ----
 
 # Regarding MarketID, do we have any outliers that could greatly increase Sales, even conditionally per MarketSize?
-MarketID.outliers <- ggplot(data = data.org %>% group_by(LocationID, MarketID, MarketSize, Promotion) %>% summarize(SalesInThousands = sum(SalesInThousands))) + 
-  geom_point(aes(x = Promotion, y = SalesInThousands, color = MarketSize)) +  facet_wrap(. ~ MarketID) + theme_bw() +
-  labs(x = "Promotion", y = "Sales in 4 weeks", title = "MarketID") + theme(plot.title = element_text(hjust = 0.5))
+MarketID.outliers <- ggplot(data = data.org %>% group_by(LocationID, MarketID, MarketSize, Promotion) %>% summarize(SalesInThousands = sum(SalesInThousands)) %>% mutate(MarketID = paste0("Market ID = ", MarketID))) + 
+  geom_point(aes(x = Promotion, y = SalesInThousands, color = MarketSize)) +  facet_wrap(. ~ MarketID, scales = "free_x", ncol = 5) + theme_bw() +
+  labs(x = "Campaign", y = "Sales") + theme(plot.title = element_text(hjust = 0.5), legend.position = "top")
 # If we look at Sales by Promotion conditional on MarketID, we see that Sales are roughly equally distributed between Promotions at each MarketId 
 # and also follow the findings based on MarketSize.
 # There are therefore no outliers or MarketID influence that would affect Sales and not be detected in Promotion.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
