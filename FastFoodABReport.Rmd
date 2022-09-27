@@ -35,7 +35,9 @@ source("Script.R")
 \tableofcontents
 \newpage
 
-# 1. Task
+# 1. About
+
+## 1.1 Task
 
 Data and description of the task is part of one of Kaggle's data sets. The data is obtained for (fictional) research in [\underline{Fast Food Marketing Campaign AB Test}](https://www.kaggle.com/datasets/chebotinaa/fast-food-marketing-campaign-ab-test). 
 
@@ -43,7 +45,7 @@ The task is about a fast-food chain which plans to add a new item to its menu. T
 
 Our goal was to evaluate the results of AB test and decide which marketing strategy works the best.
 
-# 2. Data 
+## 1.2 Data
 
 The data available to us for research is 7 variables with 548 recorded observations where there is no missing values. Variables and their short description is as follows:
 
@@ -59,11 +61,11 @@ We want to decide on one (or more) out of three campaigns (1, 2, 3). A variable 
 
 \newpage
 
-# 3. Exploratory analysis
+# 2. Exploratory analysis
 
 Let's first look at all the variables that could indirectly affect the campaign performance and determine how we will treat them accordingly.
 
-## 3.1 Weeks
+## 2.1 Weeks
 
 For each location, we have recorded sales for each of the first 4 weeks separately. Before anything else, let's look at weeks to see if it needs to be considered within other variables. 
 
@@ -84,7 +86,7 @@ We can conclude that promotional campaigns do not have to be taken into account 
 
 We also see that taking into account the cumulative values of sales according to the promotion campaign, campaigns 1 and 3 deviate significantly from the campaign 2. We will investigate on whether there is an impact of any other variable here.
 
-## 3.2 Location ID
+## 2.2 Location ID
 
 There are 137 store locations where each location is represented exactly once and at each location, exactly one campaign was carried out.
 
@@ -116,7 +118,7 @@ kable(Promotion.Basic.AvgLocation.Table,
 
 Now the normalized sales values for the number of locations can be compared with the test to see if there are significant differences in sales values between campaigns. The Kruskal-Wallis test tells us that there are significant differences between the campaigns in terms of sales, and the paired Wilcox test with correction for multiple testing tells us that there is no statistically significant difference between campaigns 1 and 3, while campaign 2 is statistically significantly worse.
 
-## 3.3 Market ID
+## 2.3 Market ID
 
 Similar to Location ID, we can look for outliers in Market ID. 10 different markets were included, which are not equally represented between campaigns. Are customers in a certain market more inclined to one of the promotional campaigns than the other two? If this is true, MarketID may be a variable that affects Sales and is not included in the promotion campaign. Thus, campaigns can also be adjusted to Market ID.
 
@@ -126,7 +128,7 @@ MarketID.outliers
 
 We can see that the sales value conditional on the marketing campaign is similarly distributed among all Markets IDs. They sales differ mostly in terms of market size. Therefore, there are no outliers in the Market ID that could influence the campaign selection or adjust this selection. It is only true that some Market IDs give on average higher Sales than the others, but there are no differences when comparing promotions. MarketID is thus not a variable that would influence the selection of a promotional campaign.
 
-## 4.4 Age of store 
+## 2.4 Age of store 
 
 Let's see how the age of stores (Location ID) is distributed between promotional campaigns. Stores age varies from 1 to 28 years. If the distribution was not "equal" between promotional campaigns and there was a relationship between age of stores and sales, this could have an undesirable effect on the choice of campaign.
 
@@ -144,7 +146,7 @@ AgeOfStoreBasic
 
 In the figure above, the relationship is also shown conditional on the promotional campaign. We can see that there is a strong overfitting in the data and that there is no visible relationship betweenage of store and sales. This can also be verified with a test, where the non-parametric Spearman correlation test does not reject the hypothesis of zero correlation (p = 0.43). Otherwise the value of the correlation coefficient equals $\rho = -0.068$.
 
-## 4.5 MarketSize
+## 2.5 MarketSize
 
 Let's take a look at the market size as the last, perhaps unintentionally influencing variable. According to the table below, we can quickly see that the value of sales varies greatly depending on the market sizes. The difference between average sales conditional to market size can also be confirmed with the Kruskal-Wallis test, where we reject the hypothesis of equality of average sales between market sizes. Paired Wilcox test with corrected p-values for multiple testing confirms that all three market sizes differ significantly in terms of sales.
 
@@ -194,9 +196,9 @@ Market size could also be taken into account by comparing promotional campaigns 
 
 \newpage
 
-# 4. Final decisions
+# 3. Final decisions
 
-## 4.1 Summary of findings
+## 3.1 Summary of findings
 
 Our goal is to determine the optimal selection of promotional campaigns, or to choose one (or more) of the three promotional campaigns that brings the highest sales value. For this purpose, before the actual analysis and subsequent selection of the optimal campaign, we had to study additional variables that were included in the campaigns, could affect their effectiveness and could influence their selection. The findings are as follows:
 
@@ -210,7 +212,7 @@ Our goal is to determine the optimal selection of promotional campaigns, or to c
 
 * Campaigns or locations were implemented in different markets, which were of three possible sizes (small, medium, large). We saw that the value of sales varies greatly depending on the market sizes. Disregarding the campaign, large markets provide statistically significant biggest sales, followed by small markets and the last are medium-sized markets. Considering the statistical test, this does not present a problem, since we do not reject the hypothesis that the size of the markets is equally distributed between the campaigns. However, if we look at the number or shares of market sizes within each campaign, we can see differences. Although these differences are not statistically significant, they could represent a "problem" when choosing a campaign. If we want to get rid of the possible influence of the market size, we can normalize the sales values according to the size of the market and thus put the sales on the same scale and enable an unbiased comparison of promotional campaigns.
 
-## 4.2 Choosing the optimal promotional campaign
+## 3.2 Choosing the optimal promotional campaign
 
 So we have seen that considering only the bare results of the tests and their statistical significance, the only thing that needs to be taken into account when choosing the optimal promotional campaign is that we do not compare the cumulative values of sales but the average values by location.
 
