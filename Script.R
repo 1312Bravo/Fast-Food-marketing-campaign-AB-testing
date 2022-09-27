@@ -69,21 +69,24 @@ Promotion.Basic <- data.org %>%
 # Effect of week variable on Sales -> We do not consider the Promotion group or anything else
 Weeks.Basic <- data.org %>% group_by(week) %>% summarize(AvgSales = mean(SalesInThousands)) %>%
   ggplot(aes(x = week, y = AvgSales, fill = week)) + geom_col() +
-  geom_label(aes(label = round(AvgSales, 1)), vjust = 1.5) +
-  labs(x = "Week", y = "Average Sales per Week", title = "Week effect on Sales not considering anything else") +
+  geom_label(aes(label = paste0(round(AvgSales, 1), "k")), vjust = 1.5) +
+  labs(x = "Week", y = "Average Sales per Week [in thousands]", title = "Week effect on Sales not considering anything else") +
   theme_bw() + theme(legend.position = "none", plot.title = element_text(hjust = 0.5))
+
+Weeks.Basic.Table <-  data.org %>% group_by(week) %>% summarize(AvgSales = mean(SalesInThousands))
+
 # There are no differences between weeks in terms of Sales
 
 # Test: Are there differences in Sales depending only on weeks
-data.org %>% group_by(week) %>% summarize(avgSales = avg(SalesInThousands))
+data.org %>% group_by(week) %>% summarize(avgSales = mean(SalesInThousands))
 Test.Weeks <- kruskal.test(SalesInThousands ~ week, data = data.org)
 # No relationship between week and Sales
 
 # Effect of week variable on Sales conditional on Promotion group
-Weeks.Promotion <- data.org %>% group_by(Promotion, week) %>% summarize(Avg.Sales = mean(SalesInThousands)) %>%
+Weeks.Promotion <- data.org %>% group_by(Promotion, week) %>% summarize(Avg.Sales = mean(SalesInThousands)) %>% mutate(Promotion = paste("Campaign", Promotion)) %>%
   ggplot(aes(x = week, y = Avg.Sales, fill = week)) + geom_col() + facet_wrap(. ~ Promotion) + 
   geom_label(aes(label = paste0(round(Avg.Sales, 1), "k")), vjust = 1.5) +
-  labs(x = "Week", y = "Average Sales per Week", title = "Week effect on Sales conditional on Promotion groups") +
+  labs(x = "Week", y = "Average Sales (in thousands)", title = "Week effect on Sales conditional on Promotion campaign") +
   theme_bw() + theme(legend.position = "none", plot.title = element_text(hjust = 0.5))
 # There are minimal differences in weeks within all Promotions groups
 
@@ -110,8 +113,10 @@ Locations.PromotionGroup <- data.org %>% group_by(Promotion) %>% summarize(Nr.Lo
 
 # Regarding LocationID, do we have any outliers that could greatly increase Sales, even conditionally per week?
 
-Location.outlier.Promotion <- ggplot(data = data.org %>% arrange(Promotion)) + 
-  geom_point(aes(x = LocationID, y = SalesInThousands, color = MarketSize)) + facet_wrap(.~week) + theme_bw()
+Location.outlier.Promotion <- ggplot(data = data.org %>% arrange(Promotion) %>% mutate(week = paste("Week", week))) + 
+  geom_point(aes(x = LocationID, y = SalesInThousands, color = MarketSize)) + facet_wrap(.~week) + 
+  theme_bw() + theme(legend.position = "top") +
+  labs(color = "Market Size", x = "Location ID", y = "Sales (in thousands)")
 
 # No utliers :)
 
@@ -142,6 +147,13 @@ Promotion.Basic.AvgLocation <- data.org %>%
                                 "Not normalized = ", round(CumPercentSales, 1), "%")), vjust = 1.5) +
   labs(x = "Promotion", y = "Cumulative sales per average location [%]", title = "Cumulative Sales normalized for number of Locations, conditional on Promotion group") +
   theme_bw() + theme(legend.position = "none")
+
+Promotion.Basic.AvgLocation.Table <- data.org %>% 
+  group_by(Promotion) %>% summarize(CumSales = sum(SalesInThousands), NumberLocations = n() / 4) %>%
+  mutate(CumPercentSales = CumSales / sum(CumSales) * 100,
+         CumSales.Normalized = CumSales / NumberLocations) %>%
+  mutate(CumPercentSales.Normalized = CumSales.Normalized / sum(CumSales.Normalized) * 100) %>% 
+  select(Promotion, NumberLocations, CumSales, CumSales.Normalized, CumPercentSales, CumPercentSales.Normalized)
 
 # Test: Is there a difference in average Sales between Promotion groups
 # -> Average - Taking into account number of locations per Promotion group :)
@@ -291,5 +303,7 @@ Kruskal.AgeOfStore.Promotion <- kruskal.test(Promotion ~ AgeOfStore, data = data
 # Regarding MarketID, do we have any outliers that could greatly increase Sales, even conditionally per MarketSize?
 MarketID.outliers <- ggplot(data = data.org %>% group_by(LocationID, MarketID, MarketSize, Promotion) %>% summarize(SalesInThousands = sum(SalesInThousands))) + 
   geom_point(aes(x = Promotion, y = SalesInThousands, color = MarketSize)) +  facet_wrap(. ~ MarketID) + theme_bw() +
-  labs(x = "Promotion", y = "Sales in 4 weeks", title = "MarketID")
-
+  labs(x = "Promotion", y = "Sales in 4 weeks", title = "MarketID") + theme(plot.title = element_text(hjust = 0.5))
+# If we look at Sales by Promotion conditional on MarketID, we see that Sales are roughly equally distributed between Promotions at each MarketId 
+# and also follow the findings based on MarketSize.
+# There are therefore no outliers or MarketID influence that would affect Sales and not be detected in Promotion.
